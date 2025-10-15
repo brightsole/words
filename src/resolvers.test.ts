@@ -112,14 +112,17 @@ describe('Resolvers', () => {
           { Word, event: {} },
         );
 
-        expect(Word.create).toHaveBeenCalledWith({
-          name: 'happy',
-          associations: expect.any(Array),
-          definition: expect.objectContaining({
-            definition: expect.any(String),
-          }),
-          cacheExpiryDate: expect.any(Number),
-        });
+        expect(Word.create).toHaveBeenCalledWith(
+          {
+            name: 'happy',
+            associations: expect.any(Array),
+            definition: expect.objectContaining({
+              definition: expect.any(String),
+            }),
+            cacheExpiryDate: expect.any(Number),
+          },
+          { overwrite: true },
+        );
 
         // Verify RiTa-derived associations were included
         const createMock = Word.create as unknown as jest.Mock<

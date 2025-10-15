@@ -16,7 +16,7 @@ const createServer = () => {
         resolvers,
       },
     ]),
-    maxRecursiveSelections: 10,
+    maxRecursiveSelections: 15,
   });
 
   return server;

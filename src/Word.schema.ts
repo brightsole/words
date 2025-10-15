@@ -22,7 +22,10 @@ export default new Schema(
             matches: {
               type: Array,
               schema: [
-                { type: Object, schema: { word: String, score: Number } },
+                {
+                  type: Object,
+                  schema: { word: String, score: Number },
+                },
               ],
             },
           },

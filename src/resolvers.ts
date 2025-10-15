@@ -1,6 +1,7 @@
 import { GraphQLDateTime, GraphQLJSONObject } from 'graphql-scalars';
 import { RiTa } from 'rita';
 import { Context, NameObject, Affirmative, DBWord } from './types';
+import getEnv from './getEnv';
 import { dedupeLinks } from './dedupeLinks';
 import fetchDefinition from './fetchDefinition';
 
@@ -82,20 +83,25 @@ export default {
 
       const associations = results
         .filter((result) => result.status === 'fulfilled')
-        .map((result) => result.value);
+        .map((result) => result.value)
+        .filter((assoc) => assoc.matches.length > 0);
 
-      results
-        .filter((result) => result.status === 'rejected')
-        .forEach((failure) =>
-          console.error('Some association fetches failed', failure),
-        );
+      // see why requests failed
+      // results
+      //   .filter((result) => result.status === 'rejected')
+      //   .forEach((failure) =>
+      //     console.error('Some association fetches failed', failure),
+      //   );
 
-      const newWord = await Word.create({
-        name,
-        associations,
-        definition: definition,
-        cacheExpiryDate: Date.now() + THREE_MONTHS,
-      });
+      const newWord = await Word.create(
+        {
+          name,
+          associations,
+          definition: definition,
+          cacheExpiryDate: Date.now() + THREE_MONTHS,
+        },
+        { overwrite: true }, // upsert
+      );
 
       return newWord;
     },
@@ -107,7 +113,7 @@ export default {
       { name }: { name: string },
       { userId, Word }: Context,
     ): Promise<Affirmative> => {
-      if (userId !== process.env.ADMIN_USER_ID || !process.env.ADMIN_USER_ID) {
+      if (userId !== getEnv().adminUserId || !getEnv().adminUserId) {
         throw new Error('Only admin can force cache invalidation');
       }
 
@@ -124,7 +130,7 @@ export default {
       { name }: NameObject,
       { userId, Word }: Context,
     ): Promise<void> => {
-      if (userId !== process.env.ADMIN_USER_ID || !process.env.ADMIN_USER_ID) {
+      if (userId !== getEnv().adminUserId || !getEnv().adminUserId) {
         throw new Error('Only admin can force cache invalidation');
       }
 

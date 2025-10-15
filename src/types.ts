@@ -12,7 +12,7 @@ export interface LambdaContextFunctionArgument {
   context: LambdaContext;
 }
 
-type Association = {
+export type Association = {
   associationType: string;
   matches: { word: string; score?: number }[];
 };
