@@ -24,8 +24,16 @@ export default gql`
     associations: [Association!]!
   }
 
+  type WordDefinition {
+    definition: String
+    partOfSpeech: String
+    pronunciation: String
+    source: String
+  }
+
   type Word @key(fields: "name") @shareable {
     name: ID!
+    definition: WordDefinition
     cacheExpiryDate: DateTime
     createdAt: DateTime
     updatedAt: DateTime

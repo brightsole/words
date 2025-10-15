@@ -1,6 +1,20 @@
 import resolvers from './resolvers';
+import fetchDefinition from './fetchDefinition';
+import { RiTa } from 'rita';
 import { ModelType, Word } from './types';
 import { Query as QueryType } from 'dynamoose/dist/ItemRetriever';
+
+jest.mock('./fetchDefinition', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+jest.mock('rita', () => ({
+  RiTa: {
+    rhymes: jest.fn(),
+    soundsLike: jest.fn(),
+    spellsLike: jest.fn(),
+  },
+}));
 
 const { Query, Mutation } = resolvers;
 
@@ -30,6 +44,12 @@ describe('Resolvers', () => {
           name: 'happy',
           cacheExpiryDate: Date.now() + 1000,
           associations: [],
+          definition: {
+            definition: 'feeling or showing pleasure',
+            partOfSpeech: 'adjective',
+            pronunciation: '/ˈhæpi/',
+            source: 'https://freedictionaryapi.com',
+          },
         };
         const Word = createWordModelMock({
           get: jest.fn().mockResolvedValue(cachedWord),
@@ -42,12 +62,17 @@ describe('Resolvers', () => {
         );
         expect(word).toEqual(cachedWord);
       });
-
-      it('creates new word when no cached word exists', async () => {
+      it('creates new word when no cached word exists (with definition + RiTa)', async () => {
         const newWord = {
           name: 'happy',
           associations: [],
           cacheExpiryDate: expect.any(Number),
+          definition: {
+            definition: 'feeling or showing pleasure',
+            partOfSpeech: 'adjective',
+            pronunciation: '/ˈhæpi/',
+            source: 'https://freedictionaryapi.com',
+          },
         };
 
         const Word = createWordModelMock({
@@ -55,10 +80,31 @@ describe('Resolvers', () => {
           create: jest.fn().mockResolvedValue(newWord),
         });
 
-        // Mock fetch for API calls
-        global.fetch = jest.fn().mockResolvedValue({
+        // Mock Free Dictionary helper (typed)
+        const mockedFetchDefinition = jest.mocked(fetchDefinition);
+        mockedFetchDefinition.mockResolvedValue({
+          definition: 'feeling or showing pleasure',
+          partOfSpeech: 'adjective',
+          pronunciation: '/ˈhæpi/',
+          source: 'https://freedictionaryapi.com',
+        });
+
+        // Mock RiTa methods
+        const mockedRiTa = RiTa as jest.Mocked<typeof RiTa>;
+        mockedRiTa.rhymes.mockResolvedValue(['sappy']);
+        mockedRiTa.soundsLike.mockResolvedValue(['snappy']);
+        mockedRiTa.spellsLike.mockResolvedValue(['hoppy']);
+
+        // Mock fetch for Datamuse API calls
+        type MinimalResponse = { json: () => Promise<unknown> };
+        type MinimalFetch = (input: string) => Promise<MinimalResponse>;
+        const mockFetch: jest.Mock<
+          ReturnType<MinimalFetch>,
+          Parameters<MinimalFetch>
+        > = jest.fn().mockResolvedValue({
           json: () => Promise.resolve([]),
         });
+        global.fetch = mockFetch as unknown as typeof fetch;
 
         const word = await Query.word(
           undefined,
@@ -66,11 +112,52 @@ describe('Resolvers', () => {
           { Word, event: {} },
         );
 
-        expect(Word.create).toHaveBeenCalledWith({
-          name: 'happy',
-          associations: expect.any(Array),
-          cacheExpiryDate: expect.any(Number),
-        });
+        expect(Word.create).toHaveBeenCalledWith(
+          {
+            name: 'happy',
+            associations: expect.any(Array),
+            definition: expect.objectContaining({
+              definition: expect.any(String),
+            }),
+            cacheExpiryDate: expect.any(Number),
+          },
+          { overwrite: true },
+        );
+
+        // Verify RiTa-derived associations were included
+        const createMock = Word.create as unknown as jest.Mock<
+          unknown,
+          [
+            {
+              associations: Array<{
+                associationType: string;
+                matches: Array<{ word: string; score?: number }>;
+              }>;
+            },
+          ]
+        >;
+        const createArg = createMock.mock.calls[0][0];
+        expect(
+          createArg.associations.some(
+            (a) =>
+              a.associationType === 'RiTa: rhymes' &&
+              a.matches.some((m) => m.word === 'sappy'),
+          ),
+        ).toBe(true);
+        expect(
+          createArg.associations.some(
+            (a) =>
+              a.associationType === 'RiTa: sounds like' &&
+              a.matches.some((m) => m.word === 'snappy'),
+          ),
+        ).toBe(true);
+        expect(
+          createArg.associations.some(
+            (a) =>
+              a.associationType === 'RiTa: spelled like' &&
+              a.matches.some((m) => m.word === 'hoppy'),
+          ),
+        ).toBe(true);
         expect(word).toEqual(newWord);
       });
     });

@@ -12,14 +12,22 @@ export interface LambdaContextFunctionArgument {
   context: LambdaContext;
 }
 
-type Association = {
+export type Association = {
   associationType: string;
   matches: { word: string; score?: number }[];
+};
+
+type WordDefinition = {
+  definition: string;
+  partOfSpeech: string;
+  pronunciation: string;
+  source: string;
 };
 
 export type DBWord = {
   cacheExpiryDate: number;
   associations: Association[];
+  definition: WordDefinition | null;
   createdAt: number;
   updatedAt: number;
   name: string;

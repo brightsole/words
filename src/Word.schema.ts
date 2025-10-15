@@ -3,6 +3,15 @@ import { Schema } from 'dynamoose';
 export default new Schema(
   {
     name: { type: String, hashKey: true, required: true },
+    definition: {
+      type: Object,
+      schema: {
+        definition: String,
+        partOfSpeech: String,
+        pronunciation: String,
+        source: String,
+      },
+    },
     associations: {
       type: Array,
       schema: [
@@ -13,7 +22,10 @@ export default new Schema(
             matches: {
               type: Array,
               schema: [
-                { type: Object, schema: { word: String, score: Number } },
+                {
+                  type: Object,
+                  schema: { word: String, score: Number },
+                },
               ],
             },
           },
