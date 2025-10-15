@@ -2,10 +2,10 @@ import { model } from 'dynamoose';
 import type { BaseContext, ContextFunction } from '@apollo/server';
 import type {
   LambdaContextFunctionArgument,
-  Item as ItemType,
+  Word as WordType,
   Context,
 } from './types';
-import ItemModel from './Item.schema';
+import WordModel from './Word.schema';
 import getEnv from './getEnv';
 
 const setContext: ContextFunction<
@@ -13,13 +13,13 @@ const setContext: ContextFunction<
   BaseContext
 > = async ({ event, context }): Promise<Context> => {
   const { id } = event.headers;
-  const Item = model<ItemType>(getEnv().tableName, ItemModel);
+  const Word = model<WordType>(getEnv().tableName, WordModel);
 
   return {
     ...context,
-    ownerId: id,
+    userId: id,
     event,
-    Item,
+    Word,
   };
 };
 

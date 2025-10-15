@@ -9,7 +9,6 @@ import setContext from './setContext';
 import typeDefs from './typeDefs';
 
 const createServer = () => {
-  console.time('createServer');
   const server = new ApolloServer({
     schema: buildSubgraphSchema([
       {
@@ -17,9 +16,8 @@ const createServer = () => {
         resolvers,
       },
     ]),
-    maxRecursiveSelections: 7,
+    maxRecursiveSelections: 10,
   });
-  console.timeEnd('createServer');
 
   return server;
 };

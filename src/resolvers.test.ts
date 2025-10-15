@@ -1,15 +1,14 @@
-import { Condition } from 'dynamoose';
 import resolvers from './resolvers';
-import { ModelType, Item } from './types';
+import { ModelType, Word } from './types';
 import { Query as QueryType } from 'dynamoose/dist/ItemRetriever';
 
 const { Query, Mutation } = resolvers;
 
-type ItemModelMock = jest.Mocked<ModelType & QueryType<Item>>;
+type WordModelMock = jest.Mocked<ModelType & QueryType<Word>>;
 
-const createItemModelMock = (
-  overrides: Partial<ItemModelMock> = {},
-): ItemModelMock => {
+const createWordModelMock = (
+  overrides: Partial<WordModelMock> = {},
+): WordModelMock => {
   return {
     get: jest.fn().mockReturnThis(),
     query: jest.fn().mockReturnThis(),
@@ -20,279 +19,144 @@ const createItemModelMock = (
     update: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
     ...overrides,
-  } as ItemModelMock; // the item is partial, which spooks ts
+  } as WordModelMock; // the word is partial, which spooks ts
 };
 
 describe('Resolvers', () => {
   describe('Queries', () => {
-    describe('item(id): Item', () => {
-      it('fetches an item given an id', async () => {
-        const Item = createItemModelMock({
-          get: jest.fn().mockResolvedValue({ id: 'niner' }),
+    describe('word(name): Word', () => {
+      it('fetches a cached word when cache is valid', async () => {
+        const cachedWord = {
+          name: 'happy',
+          cacheExpiryDate: Date.now() + 1000,
+          associations: [],
+        };
+        const Word = createWordModelMock({
+          get: jest.fn().mockResolvedValue(cachedWord),
         });
 
-        const item = await Query.item(
+        const word = await Query.word(
           undefined,
-          { id: 'niner' },
-          { Item, event: {} },
+          { name: 'happy' },
+          { Word, event: {} },
         );
-        expect(item).toEqual({ id: 'niner' });
+        expect(word).toEqual(cachedWord);
       });
 
-      it('returns undefined when fetching something nonexistent', async () => {
-        const Item = createItemModelMock({
+      it('creates new word when no cached word exists', async () => {
+        const newWord = {
+          name: 'happy',
+          associations: [],
+          cacheExpiryDate: expect.any(Number),
+        };
+
+        const Word = createWordModelMock({
           get: jest.fn().mockResolvedValue(undefined),
+          create: jest.fn().mockResolvedValue(newWord),
         });
 
-        const item = await Query.item(
-          undefined,
-          { id: 'niner' },
-          { Item, event: {} },
-        );
-        expect(item).toEqual(undefined);
-      });
-
-      it("allows you to grab someone else's item", async () => {
-        const Item = createItemModelMock({
-          get: jest.fn().mockResolvedValue({ id: 'niner', owner: 'not-you' }),
+        // Mock fetch for API calls
+        global.fetch = jest.fn().mockResolvedValue({
+          json: () => Promise.resolve([]),
         });
 
-        const item = await Query.item(
+        const word = await Query.word(
           undefined,
-          { id: 'niner' },
-          { Item, event: {} },
+          { name: 'happy' },
+          { Word, event: {} },
         );
-        expect(item).toEqual({ id: 'niner', owner: 'not-you' });
-      });
-    });
 
-    describe('items(id): Item[]', () => {
-      it('fetches all items of a given ownerId', async () => {
-        const Item = createItemModelMock({
-          exec: jest.fn().mockResolvedValue([
-            { id: 'niner', owner: 'you' },
-            { id: 'five', owner: 'you' },
-          ]),
+        expect(Word.create).toHaveBeenCalledWith({
+          name: 'happy',
+          associations: expect.any(Array),
+          cacheExpiryDate: expect.any(Number),
         });
-
-        const items = await Query.items(
-          undefined,
-          { query: { ownerId: 'you' } },
-          { Item, event: {} },
-        );
-        expect(items).toEqual([
-          { id: 'niner', owner: 'you' },
-          { id: 'five', owner: 'you' },
-        ]);
-      });
-
-      it('returns nothing if it is given an unused ownerId', async () => {
-        const Item = createItemModelMock({
-          exec: jest.fn().mockResolvedValue([]),
-        });
-
-        const items = await Query.items(
-          undefined,
-          { query: { ownerId: 'nonexistent' } },
-          { Item, event: {} },
-        );
-        expect(items).toEqual([]);
-      });
-
-      it("allows you to grab someone else's items", async () => {
-        const Item = createItemModelMock({
-          exec: jest.fn().mockResolvedValue([
-            { id: 'niner', owner: 'not-you' },
-            { id: 'five', owner: 'not-you' },
-          ]),
-        });
-
-        const items = await Query.items(
-          undefined,
-          { query: { ownerId: 'not-you' } },
-          { Item, event: {} },
-        );
-        expect(items).toEqual([
-          { id: 'niner', owner: 'not-you' },
-          { id: 'five', owner: 'not-you' },
-        ]);
+        expect(word).toEqual(newWord);
       });
     });
   });
 
   describe('Mutations', () => {
-    describe('createItem(name, description): Item', () => {
-      it('creates an item when given good info', async () => {
-        const Item = createItemModelMock({
-          create: jest.fn().mockResolvedValue({
-            id: 'niner',
-            name: 'Niner',
-            ownerId: 'yourself',
-            description: 'My favorite number',
-          }),
-        });
-
-        const item = await Mutation.createItem(
-          undefined,
-          { name: 'Niner', description: 'My favorite number' },
-          { Item, event: {}, ownerId: 'yourself' },
-        );
-        expect(item).toEqual({
-          id: 'niner',
-          name: 'Niner',
-          ownerId: 'yourself',
-          description: 'My favorite number',
-        });
+    describe('forceCacheInvalidation(name): Affirmative', () => {
+      beforeEach(() => {
+        process.env.ADMIN_USER_ID = 'admin-user-123';
       });
 
-      it('explodes if not logged in, because orphan items are verboten', async () => {
-        const Item = createItemModelMock({
-          create: jest.fn().mockResolvedValue({
-            id: 'niner',
-            name: 'Niner',
-            description: 'My favorite number',
-          }),
+      afterEach(() => {
+        delete process.env.ADMIN_USER_ID;
+      });
+
+      it('invalidates cache when user is admin', async () => {
+        const Word = createWordModelMock({
+          update: jest.fn().mockResolvedValue({ ok: true }),
+        });
+
+        const result = await Mutation.forceCacheInvalidation(
+          undefined,
+          { name: 'test-word' },
+          { Word, event: {}, userId: 'admin-user-123' },
+        );
+
+        expect(result).toEqual({ ok: true });
+        expect(Word.update).toHaveBeenCalledWith(
+          { name: 'test-word' },
+          { cacheExpiryDate: expect.any(Number) },
+          { returnValues: 'ALL_NEW' },
+        );
+      });
+
+      it('throws error when user is not admin', async () => {
+        const Word = createWordModelMock({
+          update: jest.fn(),
         });
 
         await expect(
-          Mutation.createItem(
+          Mutation.forceCacheInvalidation(
             undefined,
-            { name: 'Niner', description: 'My favorite number' },
-            { Item, event: {} },
+            { name: 'test-word' },
+            { Word, event: {}, userId: 'regular-user' },
           ),
-        ).rejects.toThrow('Unauthorized');
+        ).rejects.toThrow('Only admin can force cache invalidation');
       });
     });
 
-    describe('updateItem(name, description): Item', () => {
-      it('updates an item when given good info', async () => {
-        const Item = createItemModelMock({
-          update: jest.fn().mockResolvedValue({
-            id: 'niner',
-            name: 'Niner',
-            ownerId: 'yourself',
-            description: 'My favorite number',
-          }),
-          get: jest.fn().mockResolvedValue({
-            id: 'niner',
-            name: 'Niner',
-            ownerId: 'yourself',
-            description: 'My favorite number',
-          }),
-        });
-
-        const item = await Mutation.updateItem(
-          undefined,
-          {
-            input: {
-              id: 'niner',
-              name: 'Niner',
-              description: 'My favorite number',
-            },
-          },
-          { Item, event: {}, ownerId: 'yourself' },
-        );
-        expect(item).toEqual({
-          id: 'niner',
-          name: 'Niner',
-          ownerId: 'yourself',
-          description: 'My favorite number',
-        });
+    describe('deleteWord(name): void', () => {
+      beforeEach(() => {
+        process.env.ADMIN_USER_ID = 'admin-user-123';
       });
 
-      it('explodes if no match for id, because its a required property', async () => {
-        const Item = createItemModelMock({
-          update: jest.fn().mockRejectedValue({
-            code: 'ConditionalCheckFailedException',
-          }),
-        });
-
-        await expect(
-          Mutation.updateItem(
-            undefined,
-            {
-              input: {
-                id: 'niner',
-                name: 'Niner',
-                description: 'My favorite number',
-              },
-            },
-            { Item, event: {}, ownerId: 'yourself' },
-          ),
-        ).rejects.toThrow('Item deleted or owned by another user');
-        expect(Item.update).toHaveBeenCalledWith(
-          { id: 'niner' },
-          {
-            description: 'My favorite number',
-            name: 'Niner',
-            ownerId: 'yourself',
-          },
-          { condition: expect.any(Condition), returnValues: 'ALL_NEW' },
-        );
+      afterEach(() => {
+        delete process.env.ADMIN_USER_ID;
       });
 
-      it("never lets you overwrite another user's item because auth sets ownerId", async () => {
-        const Item = createItemModelMock({
-          update: jest.fn().mockRejectedValue({
-            code: 'ConditionalCheckFailedException',
-          }),
-        });
-
-        await expect(
-          Mutation.updateItem(
-            undefined,
-            {
-              input: {
-                id: 'niner',
-                name: 'Niner',
-                description: 'My favorite number',
-              },
-            },
-            { Item, event: {}, ownerId: 'yourself' },
-          ),
-        ).rejects.toThrow('Item deleted or owned by another user');
-      });
-    });
-
-    describe('deleteItem(name, description): Item', () => {
-      it('deletes an item when given good info', async () => {
-        const Item = createItemModelMock({
+      it('deletes a word when user is admin', async () => {
+        const Word = createWordModelMock({
           delete: jest.fn().mockResolvedValue(undefined),
         });
 
         await expect(
-          Mutation.deleteItem(
+          Mutation.deleteWord(
             undefined,
-            { id: 'niner' },
-            { Item, event: {}, ownerId: 'yourself' },
+            { name: 'test-word' },
+            { Word, event: {}, userId: 'admin-user-123' },
           ),
         ).resolves.toBeUndefined();
 
-        expect(Item.delete).toHaveBeenCalledWith('niner', {
-          condition: expect.any(Condition),
-        });
+        expect(Word.delete).toHaveBeenCalledWith('test-word');
       });
 
-      it("explodes if the auth owner id doesn't match the target item", async () => {
-        const Item = createItemModelMock({
-          delete: jest.fn().mockRejectedValue(
-            Object.assign(new Error('Conditional check failed'), {
-              code: 'ConditionalCheckFailedException',
-            }),
-          ),
+      it('throws error when user is not admin', async () => {
+        const Word = createWordModelMock({
+          delete: jest.fn(),
         });
 
         await expect(
-          Mutation.deleteItem(
+          Mutation.deleteWord(
             undefined,
-            { id: 'niner' },
-            { Item, event: {}, ownerId: 'yourself' },
+            { name: 'test-word' },
+            { Word, event: {}, userId: 'regular-user' },
           ),
-        ).rejects.toThrow('Conditional check failed');
-
-        expect(Item.delete).toHaveBeenCalledWith('niner', {
-          condition: expect.any(Condition),
-        });
+        ).rejects.toThrow('Only admin can force cache invalidation');
       });
     });
   });

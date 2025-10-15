@@ -3,27 +3,23 @@
 export default $config({
   app(input) {
     return {
-      name: 'items-service',
+      name: 'words-service',
       removal: input?.stage === 'production' ? 'retain' : 'remove',
-      protect: ['production'].includes(input?.stage),
+      protect: input?.stage === 'production',
       home: 'aws',
     };
   },
   async run() {
-    const itemsTable = new sst.aws.Dynamo('Items', {
+    const wordsTable = new sst.aws.Dynamo('Words', {
       fields: {
-        id: 'string',
-        ownerId: 'string',
+        name: 'string',
       },
-      primaryIndex: { hashKey: 'id' },
-      globalIndexes: {
-        ownerId: { hashKey: 'ownerId' },
-      },
+      primaryIndex: { hashKey: 'name' },
       deletionProtection: $app.stage === 'production',
     });
 
-    const api = new sst.aws.ApiGatewayV2('Api', {
-      link: [itemsTable],
+    const api = new sst.aws.ApiGatewayV2('WordsAPI', {
+      link: [wordsTable],
     });
 
     // new sst.aws.Cron('KeepWarmCron', {
@@ -40,20 +36,33 @@ export default $config({
 
     api.route('ANY /', {
       handler: 'src/server.handler',
-      runtime: 'nodejs18.x',
+      runtime: 'nodejs22.x',
       timeout: '20 seconds',
       memory: '1024 MB',
       nodejs: {
         format: 'esm',
       },
       environment: {
-        TABLE_NAME: itemsTable.name,
+        TABLE_NAME: wordsTable.name,
       },
     });
 
+    // Store the API URL as a CloudFormation output for cross-stack reference
+    new aws.ssm.Parameter('WordsApiUrl', {
+      name: `/sst/${$app.name}/${$app.stage}/api-url`,
+      type: 'String',
+      value: api.url,
+      description: `API Gateway URL for ${$app.name} ${$app.stage}`,
+    });
+
+    // roughly how to get the api url in fed gateway
+    // const wordsApiUrl = await aws.ssm.getParameter({
+    //   name: `/sst/words-service/${$app.stage}/api-url`,
+    // });
+
     return {
       apiUrl: api.url,
-      usersTableName: itemsTable.name,
+      wordsTable: wordsTable.name,
     };
   },
 });

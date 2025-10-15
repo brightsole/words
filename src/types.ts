@@ -12,24 +12,41 @@ export interface LambdaContextFunctionArgument {
   context: LambdaContext;
 }
 
-export type ItemType = {
-  description?: string;
+type Association = {
+  associationType: string;
+  matches: { word: string; score?: number }[];
+};
+
+export type DBWord = {
+  cacheExpiryDate: number;
+  associations: Association[];
   createdAt: number;
   updatedAt: number;
-  ownerId: string;
-  name?: string;
-  id: string;
+  name: string;
 };
-export type Item = DynamooseItem & ItemType;
-export type ModelType = Model<Item>;
 
-export type IdObject = {
-  id: string;
+export type Word = DynamooseItem & DBWord;
+export type ModelType = Model<Word>;
+
+type Link = {
+  type: string;
+  score?: number;
+};
+export type GQLWord = {
+  name: string;
+  cacheExpiryDate: number;
+  createdAt: number;
+  updatedAt: number;
+  links: { name: string; associations: Link[] }[];
+};
+
+export type NameObject = {
+  name: string;
 };
 
 export type Context = {
-  Item: Model<Item>;
-  ownerId?: string;
+  Word: Model<Word>;
+  userId?: string;
   event: unknown;
 };
 
