@@ -5,13 +5,13 @@
 
 declare module "sst" {
   export interface Resource {
-    "Api": {
-      "type": "sst.aws.ApiGatewayV2"
-      "url": string
-    }
-    "ItemsTable": {
+    "Words": {
       "name": string
       "type": "sst.aws.Dynamo"
+    }
+    "WordsAPI": {
+      "type": "sst.aws.ApiGatewayV2"
+      "url": string
     }
   }
 }

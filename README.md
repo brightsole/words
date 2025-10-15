@@ -1,32 +1,18 @@
-# items
+# words
 
-## INFO
+Our links storage is a naïve solution. we store one word record with a zillion links
 
-This is a generic item CRUD/GraphQL service. It creates, updates, deletes, and allows for direct gets as well as supporting an _ok_ query language.
-### BEFORE RUNNING THE SERVICE
-- log into the aws account
-- create a new user, assign permissions directly to it, the only permission being: administrator access
-- copy the KEY ID and the SECRET ACCESS KEY
-- add them to the `~/.aws/credentials` like this:
-```
-[your-application]
-aws_access_key_id = KEY_ID
-aws_secret_access_key = SECRET_KEY
-```
-- add configuration to your `~/.aws/config` as well:
-```
-[profile your-application]
-output=json
-region=ap-southeast-2
-```
+a smarter solution _(but ultimately more costly)_ would be to store the links as records, and have the lookup be a StartWith query
+then deploying new matching criteria would be a simple lookup miss, and we wouldn't have to manually invalidate anything
 
-### RUNNING THE SERVICE
-run the service locally with `make start`
-deploy the service to the production environment once changes approved with `make deploy`
+the alternative strategy would be to go whole-hog on this, and do the dedupeLinks operation on lookup and store a 1:1 with the query shape
+big reads & writes, but ultimately even faster than now
 
-### TESTING THE SERVICE
-run the command `make test`
+We should **probably** pick a strategy. Sound money says the links method is the right call for a larger scale
 
-## TODOS
-1. load the url into a config that we can read in the federation gateway
-1. REST routes on the `/item` url with a broken-out controller. That way we can have complicated nested calls without having large gql request syntax.
+### TODO
+1. dictionary fetch
+1. rhymes fetch
+1. sort by most matching overlaps
+1. production deployment
+1. cache layer

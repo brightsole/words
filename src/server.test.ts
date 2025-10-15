@@ -1,5 +1,4 @@
 import { gql } from 'graphql-tag';
-import { nanoid } from 'nanoid';
 import getGraphqlServer from '../test/getGraphqlServer';
 
 // INTEGRATION TEST OF THE FULL PATH
@@ -7,48 +6,88 @@ import getGraphqlServer from '../test/getGraphqlServer';
 // correct low level unit testing should be done on the resolver/util level
 
 describe('Resolver full path', () => {
-  it('creates an item without error', async () => {
+  it('queries a word without error', async () => {
     const server = getGraphqlServer();
 
-    const createItemMutation = gql`
-      mutation CreateItem($name: String, $description: String) {
-        createItem(name: $name, description: $description) {
-          id
+    const wordQuery = gql`
+      query GetWord($name: ID!) {
+        word(name: $name) {
           name
-          description
+          cacheExpiryDate
+          links {
+            name
+            associations {
+              type
+              score
+            }
+          }
         }
       }
     `;
 
-    const create = jest.fn();
-
-    const ownerId = 'that guy who makes things';
-
-    const name = 'the diner of despair';
-    const description =
-      'a horrible place where the clientelle go to get bitten, not a bite';
-
-    create.mockResolvedValueOnce({
-      id: nanoid(),
-      name,
-      description,
-      ownerId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // Mock fetch for the API calls with some sample association data
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('rel_syn=')) {
+        return Promise.resolve({
+          json: () =>
+            Promise.resolve([
+              { word: 'joyful', score: 95 },
+              { word: 'cheerful', score: 90 },
+            ]),
+        });
+      }
+      if (url.includes('rel_ant=')) {
+        return Promise.resolve({
+          json: () =>
+            Promise.resolve([
+              { word: 'sad', score: 85 },
+              { word: 'gloomy', score: 80 },
+            ]),
+        });
+      }
+      // Return empty for other association types
+      return Promise.resolve({
+        json: () => Promise.resolve([]),
+      });
     });
+
+    const mockAssociations = [
+      {
+        associationType: 'rel_syn',
+        matches: [
+          { word: 'joyful', score: 95 },
+          { word: 'cheerful', score: 90 },
+        ],
+      },
+      {
+        associationType: 'rel_ant',
+        matches: [
+          { word: 'sad', score: 85 },
+          { word: 'gloomy', score: 80 },
+        ],
+      },
+    ];
+
+    const name = 'happy';
 
     const { body } = await server.executeOperation(
       {
-        query: createItemMutation,
+        query: wordQuery,
         variables: {
           name,
-          description,
         },
       },
       {
         contextValue: {
-          ownerId,
-          Item: { create },
+          Word: {
+            get: jest.fn().mockResolvedValue(undefined),
+            create: jest.fn().mockResolvedValue({
+              name,
+              associations: mockAssociations,
+              cacheExpiryDate: Date.now() + 24 * 60 * 60 * 1000,
+            }),
+          },
+          event: {},
         },
       },
     );
@@ -61,13 +100,28 @@ describe('Resolver full path', () => {
 
     expect(singleResult.errors).toBeUndefined();
     expect(singleResult.data).toEqual({
-      createItem: { id: expect.any(String), name, description },
-    });
-    expect(create).toHaveBeenCalledWith({
-      name,
-      description,
-      id: expect.any(String),
-      ownerId,
+      word: {
+        name,
+        cacheExpiryDate: expect.any(Date),
+        links: [
+          {
+            name: 'joyful',
+            associations: [{ type: 'rel_syn', score: 95 }],
+          },
+          {
+            name: 'cheerful',
+            associations: [{ type: 'rel_syn', score: 90 }],
+          },
+          {
+            name: 'sad',
+            associations: [{ type: 'rel_ant', score: 85 }],
+          },
+          {
+            name: 'gloomy',
+            associations: [{ type: 'rel_ant', score: 80 }],
+          },
+        ],
+      },
     });
   });
 });

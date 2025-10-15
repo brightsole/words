@@ -10,33 +10,34 @@ export default gql`
       import: ["@key", "@shareable"]
     )
 
-  type Item @key(fields: "id") {
-    id: ID!
-    name: String
-    description: String
+  type Affirmative {
+    ok: Boolean!
+  }
+
+  type Association {
+    type: String!
+    score: Float
+  }
+
+  type Link {
+    name: ID!
+    associations: [Association!]!
+  }
+
+  type Word @key(fields: "name") @shareable {
+    name: ID!
+    cacheExpiryDate: DateTime
     createdAt: DateTime
     updatedAt: DateTime
-  }
-
-  input UpdateItemInput {
-    id: String!
-    name: String
-    ownerId: String!
-    description: String
-  }
-
-  input QueryObject {
-    ownerId: String
+    links: [Link!]!
   }
 
   type Query {
-    item(id: ID!): Item
-    items(query: QueryObject!): [Item]
+    word(name: ID!): Word
   }
 
   type Mutation {
-    updateItem(input: UpdateItemInput!): Item
-    createItem(name: String, description: String): Item
-    deleteItem(id: String!): Item
+    forceCacheInvalidation(name: ID!): Affirmative
+    deleteWord(id: String!): Affirmative
   }
 `;

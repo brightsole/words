@@ -1,75 +1,108 @@
-import { Condition } from 'dynamoose';
 import { GraphQLDateTime, GraphQLJSONObject } from 'graphql-scalars';
-import { nanoid } from 'nanoid';
-import { Context, IdObject, ItemType } from './types';
+import { Context, NameObject, Affirmative, DBWord } from './types';
+import { dedupeLinks } from './dedupeLinks';
+
+const DAY = 24 * 60 * 60 * 1000;
+const THREE_MONTHS = 90 * DAY;
+
+const ASSOCIATION_TYPES: Record<string, string> = {
+  rel_syn: 'means like',
+  rel_trg: 'associated with',
+  ml: 'means like',
+  sl: 'sounds like',
+  rel_com: 'comprised with',
+  rel_ant: 'opposite of',
+  rel_spc: 'is a more specific term',
+  rel_gen: 'is a more general term',
+  rel_jja: 'popular noun pairings',
+  rel_jjb: 'popular adjective pairings',
+  rel_par: 'a part of',
+  rel_bga: 'commonly followed by',
+  rel_bgb: 'commonly preceded by',
+  rel_hom: 'homophone of',
+};
 
 export default {
   Query: {
-    item: async (_: undefined, { id }: { id: string }, { Item }: Context) =>
-      Item.get({ id }),
-    // for extra security, we could ignore the props passed in, and instead only grab items that belong to
-    // the ownerId passed in the headers. This could also be overly limiting if items aren't private
-    items: async (
-      _: undefined,
-      { query: { ownerId } }: { query: { ownerId: string } },
-      { Item }: Context,
-    ) => Item.query('ownerId').eq(ownerId).using('ownerId').exec(),
+    word: async (_: undefined, { name }: NameObject, { Word }: Context) => {
+      console.log('resolving word', name);
+      try {
+        const word = await Word.get({ name });
+        if (word && word.cacheExpiryDate > Date.now()) {
+          return word;
+        }
+      } catch (_error) {
+        /* not found is fine */
+      }
+
+      const associationPromises = Object.keys(ASSOCIATION_TYPES).map(
+        async (rel) => {
+          const url = `https://api.datamuse.com/words?${rel}=${encodeURIComponent(name)}`;
+          const response = await fetch(url);
+          const matches = await response.json();
+
+          return {
+            associationType: rel,
+            matches,
+          };
+        },
+      );
+
+      const results = await Promise.allSettled(associationPromises);
+
+      const associations = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      console.log('fetched from API', associations);
+
+      const newWord = await Word.create({
+        name,
+        associations,
+        cacheExpiryDate: Date.now() + THREE_MONTHS,
+      });
+
+      return newWord;
+    },
   },
 
   Mutation: {
-    createItem: async (
+    forceCacheInvalidation: async (
       _: undefined,
-      { name, description }: { name?: string; description?: string },
-      { ownerId, Item }: Context,
-    ): Promise<ItemType> => {
-      if (!ownerId) throw new Error('Unauthorized');
-      return Item.create({ id: nanoid(), name, description, ownerId });
-    },
-
-    updateItem: async (
-      _: undefined,
-      { input: partialItem }: { input: Partial<ItemType> },
-      { ownerId, Item }: Context,
-    ): Promise<ItemType> => {
-      try {
-        const { id, ...rest } = partialItem;
-        const updatedItem = await Item.update(
-          { id },
-          { ...rest, ownerId },
-          {
-            condition: new Condition()
-              .where('ownerId')
-              .eq(ownerId)
-              .and()
-              .attribute('id')
-              .exists(),
-            returnValues: 'ALL_NEW',
-          },
-        );
-        return updatedItem; // you must await, otherwise the error will be swallowed
-      } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((error as any).code === 'ConditionalCheckFailedException') {
-          throw new Error('Item deleted or owned by another user');
-        }
-        throw error;
+      { name }: { name: string },
+      { userId, Word }: Context,
+    ): Promise<Affirmative> => {
+      if (userId !== process.env.ADMIN_USER_ID || !process.env.ADMIN_USER_ID) {
+        throw new Error('Only admin can force cache invalidation');
       }
+
+      await Word.update(
+        { name },
+        { cacheExpiryDate: new Date(0).getTime() }, // epoch
+        { returnValues: 'ALL_NEW' },
+      );
+      return { ok: true };
     },
 
-    deleteItem: async (
+    deleteWord: async (
       _: undefined,
-      { id }: IdObject,
-      { ownerId, Item }: Context,
-    ): Promise<void> =>
-      Item.delete(id, {
-        condition: new Condition().where('ownerId').eq(ownerId),
-      }),
+      { name }: NameObject,
+      { userId, Word }: Context,
+    ): Promise<void> => {
+      if (userId !== process.env.ADMIN_USER_ID || !process.env.ADMIN_USER_ID) {
+        throw new Error('Only admin can force cache invalidation');
+      }
+
+      Word.delete(name);
+    },
   },
 
-  Item: {
+  Word: {
     // for finding out the info of the other items in the system
-    __resolveReference: async ({ id }: IdObject, { Item }: Context) =>
-      Item.get(id),
+    __resolveReference: async ({ name }: NameObject, { Word }: Context) =>
+      Word.get(name),
+
+    links: (word: DBWord) => dedupeLinks(word.associations),
   },
 
   DateTime: GraphQLDateTime,
