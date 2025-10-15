@@ -1,64 +1,99 @@
 import { GraphQLDateTime, GraphQLJSONObject } from 'graphql-scalars';
+import { RiTa } from 'rita';
 import { Context, NameObject, Affirmative, DBWord } from './types';
 import { dedupeLinks } from './dedupeLinks';
+import fetchDefinition from './fetchDefinition';
 
 const DAY = 24 * 60 * 60 * 1000;
 const THREE_MONTHS = 90 * DAY;
 
 const ASSOCIATION_TYPES: Record<string, string> = {
-  rel_syn: 'means like',
-  rel_trg: 'associated with',
-  ml: 'means like',
-  sl: 'sounds like',
-  rel_com: 'comprised with',
-  rel_ant: 'opposite of',
-  rel_spc: 'is a more specific term',
-  rel_gen: 'is a more general term',
-  rel_jja: 'popular noun pairings',
-  rel_jjb: 'popular adjective pairings',
-  rel_par: 'a part of',
-  rel_bga: 'commonly followed by',
-  rel_bgb: 'commonly preceded by',
-  rel_hom: 'homophone of',
+  rel_syn: 'Datamuse: means like',
+  rel_trg: 'Datamuse: associated with',
+  ml: 'Datamuse: means like',
+  sl: 'Datamuse: sounds like',
+  rel_com: 'Datamuse: comprised with',
+  rel_ant: 'Datamuse: opposite of',
+  rel_spc: 'Datamuse: is a more specific term',
+  rel_gen: 'Datamuse: is a more general term',
+  rel_jja: 'Datamuse: popular noun pairings',
+  rel_jjb: 'Datamuse: popular adjective pairings',
+  rel_par: 'Datamuse: a part of',
+  rel_bga: 'Datamuse: commonly followed by',
+  rel_bgb: 'Datamuse: commonly preceded by',
+  rel_hom: 'Datamuse: homophone of',
 };
 
 export default {
   Query: {
-    word: async (_: undefined, { name }: NameObject, { Word }: Context) => {
-      console.log('resolving word', name);
+    word: async (
+      _: undefined,
+      { name: rawName }: NameObject,
+      { Word }: Context,
+    ) => {
+      const name = encodeURIComponent(rawName.trim().toLowerCase());
       try {
         const word = await Word.get({ name });
         if (word && word.cacheExpiryDate > Date.now()) {
           return word;
         }
-      } catch (_error) {
+      } catch {
         /* not found is fine */
       }
 
+      // Fetch definition from Free Dictionary API
+      const definition = await fetchDefinition(name);
+
       const associationPromises = Object.keys(ASSOCIATION_TYPES).map(
         async (rel) => {
-          const url = `https://api.datamuse.com/words?${rel}=${encodeURIComponent(name)}`;
+          const url = `https://api.datamuse.com/words?${rel}=${name}`;
           const response = await fetch(url);
           const matches = await response.json();
 
           return {
-            associationType: rel,
+            associationType: ASSOCIATION_TYPES[rel],
             matches,
           };
         },
       );
+      const ritaRhymes = RiTa.rhymes(name, { limit: 100 }).then((rhymes) => ({
+        associationType: 'RiTa: rhymes',
+        matches: rhymes.map((word) => ({ word })),
+      }));
+      const ritaSoundsLike = RiTa.soundsLike(name, { limit: 100 }).then(
+        (rhymes) => ({
+          associationType: 'RiTa: sounds like',
+          matches: rhymes.map((word) => ({ word })),
+        }),
+      );
+      const ritaSpelledLike = RiTa.spellsLike(name, { limit: 100 }).then(
+        (rhymes) => ({
+          associationType: 'RiTa: spelled like',
+          matches: rhymes.map((word) => ({ word })),
+        }),
+      );
 
-      const results = await Promise.allSettled(associationPromises);
+      const results = await Promise.allSettled([
+        ...associationPromises,
+        ritaSpelledLike,
+        ritaSoundsLike,
+        ritaRhymes,
+      ]);
 
       const associations = results
         .filter((result) => result.status === 'fulfilled')
         .map((result) => result.value);
 
-      console.log('fetched from API', associations);
+      results
+        .filter((result) => result.status === 'rejected')
+        .forEach((failure) =>
+          console.error('Some association fetches failed', failure),
+        );
 
       const newWord = await Word.create({
         name,
         associations,
+        definition: definition,
         cacheExpiryDate: Date.now() + THREE_MONTHS,
       });
 
