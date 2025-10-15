@@ -7,6 +7,7 @@ import {
 import resolvers from './resolvers';
 import setContext from './setContext';
 import typeDefs from './typeDefs';
+import { ApolloServerPluginInlineTraceDisabled } from '@apollo/server/plugin/disabled';
 
 const createServer = () => {
   const server = new ApolloServer({
@@ -17,6 +18,7 @@ const createServer = () => {
       },
     ]),
     maxRecursiveSelections: 15,
+    plugins: [ApolloServerPluginInlineTraceDisabled()],
   });
 
   return server;
