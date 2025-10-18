@@ -19,14 +19,24 @@ const createControllerDouble = (
 });
 
 describe('REST handler', () => {
-  it('creates an item without error', async () => {
+  it('creates an item with deduped links', async () => {
+    const timestamp = Date.now();
     const getByName = jest.fn().mockResolvedValue({
       id: nanoid(),
       name: 'threeve',
-      description: 'A combination of three and five; simply stunning',
-      ownerId: 'owner-1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      cacheExpiryDate: timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      associations: [
+        {
+          associationType: 'Datamuse: means like',
+          matches: [{ word: 'alpha', score: 42 }, { word: 'beta' }],
+        },
+        {
+          associationType: 'Datamuse: opposite of',
+          matches: [{ word: 'alpha', score: 13 }],
+        },
+      ],
     });
 
     mockStartController.mockReturnValue(createControllerDouble({ getByName }));
@@ -70,14 +80,27 @@ describe('REST handler', () => {
       expect(response.status).toBe(200);
 
       const data = JSON.parse(response.body);
-      expect(data).toEqual(
-        expect.objectContaining({
-          id: expect.any(String),
-          name: 'threeve',
-          description: 'A combination of three and five; simply stunning',
-          ownerId: 'owner-1',
-        }),
-      );
+      expect(data).toEqual({
+        id: expect.any(String),
+        name: 'threeve',
+        cacheExpiryDate: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        links: [
+          {
+            name: 'alpha',
+            associations: [
+              { type: 'Datamuse: means like', score: 42 },
+              { type: 'Datamuse: opposite of', score: 13 },
+            ],
+          },
+          {
+            name: 'beta',
+            associations: [{ type: 'Datamuse: means like' }],
+          },
+        ],
+      });
+      expect(data.associations).toBeUndefined();
       expect(getByName).toHaveBeenCalledWith('threeve');
     } finally {
       await new Promise<void>((resolve, reject) =>
