@@ -37,11 +37,13 @@ export default gql`
     cacheExpiryDate: DateTime
     createdAt: DateTime
     updatedAt: DateTime
+    cacheMiss: Boolean
     links: [Link!]!
   }
 
   type Query {
     word(name: ID!): Word
+    datamuseHealthy: Affirmative
   }
 
   type Mutation {

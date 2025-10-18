@@ -5,6 +5,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyEvent,
 } from 'aws-lambda';
+import { createWordController } from './controller';
 
 export type GatewayEvent = APIGatewayProxyEvent | APIGatewayProxyEventV2;
 export interface LambdaContextFunctionArgument {
@@ -25,11 +26,13 @@ type WordDefinition = {
 };
 
 export type DBWord = {
-  cacheExpiryDate: number;
-  associations: Association[];
   definition: WordDefinition | null;
+  associations: Association[];
+  cacheExpiryDate: number;
   createdAt: number;
   updatedAt: number;
+  version: number;
+  faulty: boolean;
   name: string;
 };
 
@@ -42,6 +45,7 @@ type Link = {
 };
 export type GQLWord = {
   name: string;
+  cacheMiss?: boolean;
   cacheExpiryDate: number;
   createdAt: number;
   updatedAt: number;
@@ -53,7 +57,7 @@ export type NameObject = {
 };
 
 export type Context = {
-  Word: Model<Word>;
+  wordController: ReturnType<typeof createWordController>;
   userId?: string;
   event: unknown;
 };

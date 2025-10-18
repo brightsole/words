@@ -34,8 +34,7 @@ export default $config({
     //   },
     // });
 
-    api.route('ANY /', {
-      handler: 'src/server.handler',
+    const functionConfig = {
       runtime: 'nodejs22.x',
       timeout: '20 seconds',
       memory: '1024 MB',
@@ -44,7 +43,23 @@ export default $config({
       },
       environment: {
         TABLE_NAME: wordsTable.name,
+        CURRENT_WORD_VERSION: '1',
       },
+    } as const;
+
+    api.route('ANY /graphql', {
+      ...functionConfig,
+      handler: 'src/graphqlHandler.handler',
+    });
+
+    api.route('GET /words/{proxy+}', {
+      ...functionConfig,
+      handler: 'src/restHandler.handler',
+    });
+
+    api.route('GET /health', {
+      ...functionConfig,
+      handler: 'src/restHandler.handler',
     });
 
     // Store the API URL as a CloudFormation output for cross-stack reference
