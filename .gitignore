@@ -2,10 +2,11 @@
 node_modules
 .nyc_output
 coverage
+.vscode
 *.lcov
+.build
 .cache
 *.log
 dist
-bin
-.build
 .sst
+bin

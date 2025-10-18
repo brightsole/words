@@ -11,8 +11,5 @@ big reads & writes, but ultimately even faster than now
 We should **probably** pick a strategy. Sound money says the links method is the right call for a larger scale
 
 ### TODO
-1. dictionary fetch
-1. rhymes fetch
 1. sort by most matching overlaps
-1. production deployment
-1. cache layer
+1. cache layer test with a simple lru
