@@ -1,9 +1,0 @@
-tsconfig.json
-README.md
-*.js.map
-*.lock
-*.txt
-*.md
-test
-src
-.*

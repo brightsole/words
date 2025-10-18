@@ -14,5 +14,6 @@ export default (_context: any = {}) =>
       },
     ]),
 
+    maxRecursiveSelections: 16,
     plugins: [ApolloServerPluginInlineTraceDisabled()],
   });

@@ -3,6 +3,8 @@ import { Schema } from 'dynamoose';
 export default new Schema(
   {
     name: { type: String, hashKey: true, required: true },
+    faulty: { type: Boolean, default: false },
+    version: { type: Number, default: 1 },
     definition: {
       type: Object,
       schema: {

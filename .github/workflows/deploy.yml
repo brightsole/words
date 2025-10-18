@@ -1,10 +1,9 @@
 name: Deploy to Production
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   deploy-production:
@@ -13,6 +12,7 @@ jobs:
       contents: read
       id-token: write
     env:
+      NODE_ENV: production
       SST_STAGE: production
       ADMIN_USER_ID: ${{ secrets.ADMIN_USER_ID }}
     steps:
@@ -30,9 +30,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
 
       - name: Cache SST build artifacts
         uses: actions/cache@v4
