@@ -1,5 +1,9 @@
 # words
 
+[![Auto merge basic check](https://github.com/brightsole/words/actions/workflows/test.yml/badge.svg)](https://github.com/brightsole/words/actions/workflows/test.yml)
+[![Dependabot Updates](https://github.com/brightsole/words/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/brightsole/words/actions/workflows/dependabot/dependabot-updates)
+[![Deploy to Production](https://github.com/brightsole/words/actions/workflows/deploy.yml/badge.svg)](https://github.com/brightsole/words/actions/workflows/deploy.yml)
+
 Our links storage is a naïve solution. we store one word record with a zillion links
 
 a smarter solution _(but ultimately more costly)_ would be to store the links as records, and have the lookup be a StartWith query
