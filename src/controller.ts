@@ -1,4 +1,5 @@
 import { model } from 'dynamoose';
+import { LRUCache } from 'lru-cache';
 import { RiTa } from 'rita';
 import type { Word, DBWord, ModelType } from './types';
 import WordSchema from './Word.schema';
@@ -7,6 +8,13 @@ import fetchDefinition from './fetchDefinition';
 
 const DAY = 24 * 60 * 60 * 1000;
 const THREE_MONTHS = 90 * DAY;
+
+const wordCache = new LRUCache<string, Word>({
+  max: 100,
+  // no ttl, lambdas are killed often
+  // no size consideration either, 50kb/entry = 6mb
+  // well below 160mb lambda limit
+});
 
 export const ASSOCIATION_TYPES: Record<string, string> = {
   rel_syn: 'Datamuse: means like',
@@ -31,6 +39,10 @@ export const createWordController = (WordModel: ModelType) => ({
   ): Promise<DBWord & { cacheMiss?: boolean }> => {
     const name = encodeURIComponent(rawName.trim().toLowerCase());
 
+    // return from the LRU if possible
+    const cachedWord = wordCache.get(name);
+    if (cachedWord) return cachedWord;
+
     const foundWord = await WordModel.get({ name }).catch(() => null);
     if (
       foundWord &&
@@ -38,6 +50,7 @@ export const createWordController = (WordModel: ModelType) => ({
       !foundWord.faulty &&
       foundWord.version >= env.currentWordVersion
     ) {
+      wordCache.set(name, foundWord);
       return foundWord;
     }
 
@@ -108,6 +121,12 @@ export const createWordController = (WordModel: ModelType) => ({
       { overwrite: true }, // upsert
     );
 
+    if (!faulty) {
+      wordCache.set(name, newWord);
+      if (env.nodeEnv !== 'test')
+        console.log(`uncached word found, current lru size: ${wordCache.size}`);
+    }
+
     return { ...newWord, cacheMiss: true };
   },
 
@@ -121,6 +140,7 @@ export const createWordController = (WordModel: ModelType) => ({
       { cacheExpiryDate: new Date(0).getTime() }, // epoch
       { returnValues: 'ALL_NEW' },
     );
+    wordCache.delete(name);
     return { ok: true };
   },
 
@@ -130,6 +150,7 @@ export const createWordController = (WordModel: ModelType) => ({
     }
 
     await WordModel.delete(name);
+    wordCache.delete(name);
     return { ok: true };
   },
 });
