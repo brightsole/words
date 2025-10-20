@@ -1,6 +1,6 @@
 import { model } from 'dynamoose';
 import { RiTa } from 'rita';
-import type { Word, ModelType } from './types';
+import type { Word, DBWord, ModelType } from './types';
 import WordSchema from './Word.schema';
 import env from './env';
 import fetchDefinition from './fetchDefinition';
@@ -26,7 +26,9 @@ export const ASSOCIATION_TYPES: Record<string, string> = {
 };
 
 export const createWordController = (WordModel: ModelType) => ({
-  getByName: async (rawName: string) => {
+  getByName: async (
+    rawName: string,
+  ): Promise<DBWord & { cacheMiss?: boolean }> => {
     const name = encodeURIComponent(rawName.trim().toLowerCase());
 
     const foundWord = await WordModel.get({ name }).catch(() => null);

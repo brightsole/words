@@ -2,6 +2,7 @@ import serverlessExpress from '@vendia/serverless-express';
 import express from 'express';
 import { startController } from './controller';
 import { DATAMUSE_CHECK_URL } from './consts';
+import { dedupeLinks } from './dedupeLinks';
 
 export const createRestApp = () => {
   const app = express();
@@ -24,8 +25,13 @@ export const createRestApp = () => {
   app.use(express.json());
 
   app.get('/words/:name', async (req, res) => {
-    const word = await itemController.getByName(req.params.name);
-    res.json(word);
+    const { associations, ...rest } = await itemController.getByName(
+      req.params.name,
+    );
+    res.json({
+      ...rest,
+      links: dedupeLinks(associations),
+    });
   });
 
   app.get('/health', async (_req, res) => {
