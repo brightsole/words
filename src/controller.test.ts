@@ -3,8 +3,10 @@ import fetchDefinition from './fetchDefinition';
 import type { DBWord } from './types';
 
 const envMock = {
+  nodeEnv: 'test',
   tableName: 'words-table-test',
   adminUserId: 'test-guy',
+  isProduction: false,
   currentWordVersion: 1,
 };
 
@@ -428,6 +430,47 @@ describe('createWordController.getByName', () => {
       } finally {
         consoleErrorSpy.mockRestore();
       }
+    });
+
+    it('reuses the cached word on repeat lookups', async () => {
+      const WordModel = buildWordModel();
+      const encodedName = 'cache%20word';
+
+      WordModel.get.mockRejectedValue(new Error('not found'));
+      WordModel.create.mockImplementation(async (doc) => doc);
+
+      primeSuccessfulAggregation(encodedName);
+
+      // @ts-expect-error test double only implements methods we call
+      const controller = createWordController(WordModel);
+
+      const firstResult = await controller.getByName('Cache Word');
+
+      expect(firstResult.cacheMiss).toBe(true);
+      expect(WordModel.get).toHaveBeenCalledTimes(1);
+      expect(mockedFetchDefinition).toHaveBeenCalledWith(encodedName);
+      expect(mockedFetchDefinition).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(ASSOCIATION_KEYS.length);
+      expect(mockRiTa.rhymes).toHaveBeenCalledTimes(1);
+      expect(mockRiTa.soundsLike).toHaveBeenCalledTimes(1);
+      expect(mockRiTa.spellsLike).toHaveBeenCalledTimes(1);
+      expect(WordModel.create).toHaveBeenCalledTimes(1);
+      expect(WordModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: encodedName }),
+        { overwrite: true },
+      );
+
+      const secondResult = await controller.getByName('Cache Word');
+
+      expect(secondResult.cacheMiss).toBeUndefined();
+      expect(secondResult).toBe(WordModel.create.mock.calls[0][0]);
+      expect(WordModel.get).toHaveBeenCalledTimes(1);
+      expect(mockedFetchDefinition).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(ASSOCIATION_KEYS.length);
+      expect(mockRiTa.rhymes).toHaveBeenCalledTimes(1);
+      expect(mockRiTa.soundsLike).toHaveBeenCalledTimes(1);
+      expect(mockRiTa.spellsLike).toHaveBeenCalledTimes(1);
+      expect(WordModel.create).toHaveBeenCalledTimes(1);
     });
   });
 });

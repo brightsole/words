@@ -12,7 +12,7 @@ const env = cleanEnv(process.env, {
   }),
   ADMIN_USER_ID: str({
     desc: 'Used to auth gate admin actions like cache busting. semi secure',
-    default: '', // still falsey so we don't accidentally give admin powers
+    default: '', // still falsy so we don't accidentally give admin powers
   }),
   CURRENT_WORD_VERSION: num({
     desc: 'The current version of words in the system',
@@ -20,6 +20,7 @@ const env = cleanEnv(process.env, {
 });
 
 export default {
+  nodeEnv: env.NODE_ENV,
   region: env.AWS_REGION,
   tableName: env.TABLE_NAME,
   adminUserId: env.ADMIN_USER_ID,
