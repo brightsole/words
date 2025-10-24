@@ -48,6 +48,6 @@ export default gql`
 
   type Mutation {
     forceCacheInvalidation(name: ID!): Affirmative
-    deleteWord(id: String!): Affirmative
+    deleteWord(name: ID!): Affirmative
   }
 `;

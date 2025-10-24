@@ -17,7 +17,7 @@ const createServer = () => {
         resolvers,
       },
     ]),
-    maxRecursiveSelections: 16,
+    introspection: true,
     plugins: [ApolloServerPluginInlineTraceDisabled()],
   });
 

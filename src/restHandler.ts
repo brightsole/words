@@ -11,7 +11,7 @@ export const createRestApp = () => {
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, id');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, x-user-id');
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
 
     if (req.method === 'OPTIONS') {
