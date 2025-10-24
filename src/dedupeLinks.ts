@@ -1,4 +1,4 @@
-import { DBWord, GQLWord } from './types';
+import { DBWord, GQLLink } from './types';
 
 /**
  * Transforms database associations into deduplicated GraphQL links format.
@@ -7,8 +7,8 @@ import { DBWord, GQLWord } from './types';
  */
 export const dedupeLinks = (
   associations: NonNullable<DBWord['associations']> = [],
-): GQLWord['links'] => {
-  const wordMap = new Map<string, Array<{ type: string; score?: number }>>();
+): GQLLink[] => {
+  const wordMap = new Map<string, GQLLink['associations']>();
 
   // Group all associations by word, collecting all their types and scores
   associations.forEach(({ associationType, matches }) => {
@@ -19,7 +19,7 @@ export const dedupeLinks = (
 
       wordMap.get(word)!.push({
         type: associationType,
-        ...(score && { score }),
+        ...(typeof score === 'number' && { score }),
       });
     });
   });

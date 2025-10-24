@@ -1,9 +1,10 @@
 import { GraphQLDateTime, GraphQLJSONObject } from 'graphql-scalars';
-import { Context, NameObject, DBWord } from './types';
+import type { Resolvers } from './generated/graphql';
+import { Context, WordResolverParent } from './types';
 import { dedupeLinks } from './dedupeLinks';
 import { DATAMUSE_CHECK_URL } from './consts';
 
-export default {
+const resolvers: Resolvers = {
   Query: {
     datamuseHealthy: async () => {
       try {
@@ -14,37 +15,34 @@ export default {
         return { ok: false };
       }
     },
-    word: async (
-      _: undefined,
-      { name }: NameObject,
-      { wordController }: Context,
-    ) => wordController.getByName(name),
+    word: async (_parent, { name }, { wordController }: Context) =>
+      wordController.getByName(name),
   },
 
   Mutation: {
     forceCacheInvalidation: async (
-      _: undefined,
-      { name }: { name: string },
+      _parent,
+      { name },
       { userId, wordController }: Context,
     ) => wordController.invalidateCache(name, userId),
 
     deleteWord: async (
-      _: undefined,
-      { name }: NameObject,
+      _parent,
+      { name },
       { userId, wordController }: Context,
     ) => wordController.remove(name, userId),
   },
 
   Word: {
     // for finding out the info of the other items in the system
-    __resolveReference: async (
-      { name }: NameObject,
-      { wordController }: Context,
-    ) => wordController.getByName(name),
+    __resolveReference: async ({ name }, { wordController }: Context) =>
+      wordController.getByName(name),
 
-    links: (word: DBWord) => dedupeLinks(word.associations),
+    links: (word: WordResolverParent) => dedupeLinks(word.associations),
   },
 
   DateTime: GraphQLDateTime,
   JSONObject: GraphQLJSONObject,
 };
+
+export default resolvers;

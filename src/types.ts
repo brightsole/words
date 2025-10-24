@@ -18,7 +18,7 @@ export type Association = {
   matches: { word: string; score?: number }[];
 };
 
-type WordDefinition = {
+export type WordDefinition = {
   definition: string;
   partOfSpeech: string;
   pronunciation: string;
@@ -39,17 +39,18 @@ export type DBWord = {
 export type Word = DynamooseItem & DBWord;
 export type ModelType = Model<Word>;
 
-type Link = {
-  type: string;
-  score?: number;
-};
-export type GQLWord = {
-  name: string;
+export type WordResolverParent = DBWord & {
   cacheMiss?: boolean;
-  cacheExpiryDate: number;
-  createdAt: number;
-  updatedAt: number;
-  links: { name: string; associations: Link[] }[];
+};
+
+export type GQLAssociation = {
+  type: string;
+  score?: number | null;
+};
+
+export type GQLLink = {
+  name: string;
+  associations: GQLAssociation[];
 };
 
 export type NameObject = {
@@ -60,8 +61,4 @@ export type Context = {
   wordController: ReturnType<typeof createWordController>;
   userId?: string;
   event: unknown;
-};
-
-export type Affirmative = {
-  ok: boolean;
 };

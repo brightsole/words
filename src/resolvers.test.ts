@@ -1,6 +1,8 @@
+import type { GraphQLResolveInfo } from 'graphql';
 import resolvers from './resolvers';
 import { createWordController } from './controller';
 import type { Context } from './types';
+import type { Resolver } from './generated/graphql';
 
 type WordControllerMock = jest.Mocked<ReturnType<typeof createWordController>>;
 
@@ -32,7 +34,33 @@ const buildContext = (overrides: ContextOverrides = {}): Context => {
 };
 
 describe('Resolvers', () => {
-  const { Query, Mutation } = resolvers;
+  const Query = resolvers.Query!;
+  const Mutation = resolvers.Mutation!;
+
+  const ensureResolver = <Result, Parent, Args>(
+    resolver: Resolver<Result, Parent, Context, Args> | undefined,
+    key: string,
+  ): Resolver<Result, Parent, Context, Args> => {
+    if (!resolver) {
+      throw new Error(`${key} resolver is not implemented`);
+    }
+    return resolver;
+  };
+
+  const callResolver = async <Result, Parent, Args>(
+    resolver: Resolver<Result, Parent, Context, Args> | undefined,
+    parent: Parent,
+    args: Args,
+    context: Context,
+    key: string,
+  ) => {
+    const info = {} as GraphQLResolveInfo;
+    const resolved = ensureResolver(resolver, key);
+    if (typeof resolved === 'function') {
+      return resolved(parent, args, context, info);
+    }
+    return resolved.resolve(parent, args, context, info);
+  };
 
   describe('Queries', () => {
     describe('word(name): Word', () => {
@@ -53,10 +81,12 @@ describe('Resolvers', () => {
           getByName: jest.fn().mockResolvedValue(cachedWord),
         });
 
-        const word = await Query.word(
-          undefined,
+        const word = await callResolver(
+          Query.word,
+          {},
           { name: 'happy' },
           buildContext({ wordController }),
+          'Query.word',
         );
 
         expect(wordController.getByName).toHaveBeenCalledWith('happy');
@@ -70,10 +100,12 @@ describe('Resolvers', () => {
         });
 
         await expect(
-          Query.word(
-            undefined,
+          callResolver(
+            Query.word,
+            {},
             { name: 'happy' },
             buildContext({ wordController }),
+            'Query.word',
           ),
         ).rejects.toThrow('controller failed');
 
@@ -89,10 +121,12 @@ describe('Resolvers', () => {
           invalidateCache: jest.fn().mockResolvedValue({ ok: true }),
         });
 
-        const result = await Mutation.forceCacheInvalidation(
-          undefined,
+        const result = await callResolver(
+          Mutation.forceCacheInvalidation,
+          {},
           { name: 'test-word' },
           buildContext({ wordController, userId: 'admin-user-123' }),
+          'Mutation.forceCacheInvalidation',
         );
 
         expect(result).toEqual({ ok: true });
@@ -109,10 +143,12 @@ describe('Resolvers', () => {
         });
 
         await expect(
-          Mutation.forceCacheInvalidation(
-            undefined,
+          callResolver(
+            Mutation.forceCacheInvalidation,
+            {},
             { name: 'test-word' },
             buildContext({ wordController, userId: 'regular-user' }),
+            'Mutation.forceCacheInvalidation',
           ),
         ).rejects.toThrow('Only admin can force cache invalidation');
 
@@ -130,10 +166,12 @@ describe('Resolvers', () => {
         });
 
         await expect(
-          Mutation.deleteWord(
-            undefined,
+          callResolver(
+            Mutation.deleteWord,
+            {},
             { name: 'test-word' },
             buildContext({ wordController, userId: 'admin-user-123' }),
+            'Mutation.deleteWord',
           ),
         ).resolves.toEqual({ ok: true });
 
@@ -150,10 +188,12 @@ describe('Resolvers', () => {
         });
 
         await expect(
-          Mutation.deleteWord(
-            undefined,
+          callResolver(
+            Mutation.deleteWord,
+            {},
             { name: 'test-word' },
             buildContext({ wordController, userId: 'regular-user' }),
+            'Mutation.deleteWord',
           ),
         ).rejects.toThrow('Only admin can force cache invalidation');
 
