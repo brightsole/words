@@ -41,9 +41,15 @@ export default gql`
     links: [Link!]!
   }
 
+  type WordCount {
+    count: Int!
+    percentage: Float!
+  }
+
   type Query {
     word(name: ID!): Word
     datamuseHealthy: Affirmative
+    wordCount: WordCount!
   }
 
   type Mutation {

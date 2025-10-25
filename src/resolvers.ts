@@ -4,6 +4,8 @@ import { Context, WordResolverParent } from './types';
 import { dedupeLinks } from './dedupeLinks';
 import { DATAMUSE_CHECK_URL } from './consts';
 
+const EXPECTED_CORPUS_SIZE = 500_000;
+
 const resolvers: Resolvers = {
   Query: {
     datamuseHealthy: async () => {
@@ -17,6 +19,14 @@ const resolvers: Resolvers = {
     },
     word: async (_parent, { name }, { wordController }: Context) =>
       wordController.getByName(name),
+
+    wordCount: async (_parent, _args, { wordController }: Context) => {
+      const count = await wordController.countAll();
+      return {
+        count,
+        percentage: (count / EXPECTED_CORPUS_SIZE) * 100,
+      };
+    },
   },
 
   Mutation: {

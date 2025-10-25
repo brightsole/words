@@ -34,6 +34,11 @@ export const ASSOCIATION_TYPES: Record<string, string> = {
 };
 
 export const createWordController = (WordModel: ModelType) => ({
+  countAll: async (): Promise<number> => {
+    const response = await WordModel.scan().count().exec();
+    return response.count;
+  },
+
   getByName: async (
     rawName: string,
   ): Promise<DBWord & { cacheMiss?: boolean }> => {

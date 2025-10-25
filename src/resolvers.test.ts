@@ -8,6 +8,7 @@ type WordControllerMock = jest.Mocked<ReturnType<typeof createWordController>>;
 
 const mockWordControllerFactory = jest.fn(
   (overrides: Partial<WordControllerMock> = {}): WordControllerMock => ({
+    countAll: jest.fn(),
     getByName: jest.fn(),
     invalidateCache: jest.fn(),
     remove: jest.fn(),
@@ -63,6 +64,44 @@ describe('Resolvers', () => {
   };
 
   describe('Queries', () => {
+    describe('wordCount: { count, percentage }', () => {
+      it('returns total count and percentage out of 500k', async () => {
+        const wordController = buildWordController({
+          countAll: jest.fn().mockResolvedValue(250000),
+        });
+
+        const result = await callResolver(
+          Query.wordCount,
+          {},
+          {},
+          buildContext({ wordController }),
+          'Query.wordCount',
+        );
+
+        expect(wordController.countAll).toHaveBeenCalled();
+        expect(result).toEqual({ count: 250000, percentage: 50 });
+      });
+
+      it('propagates controller failures', async () => {
+        const error = new Error('controller failed');
+        const wordController = buildWordController({
+          countAll: jest.fn().mockRejectedValue(error),
+        });
+
+        await expect(
+          callResolver(
+            Query.wordCount,
+            {},
+            {},
+            buildContext({ wordController }),
+            'Query.wordCount',
+          ),
+        ).rejects.toThrow('controller failed');
+
+        expect(wordController.countAll).toHaveBeenCalled();
+      });
+    });
+
     describe('word(name): Word', () => {
       it('delegates to the word controller', async () => {
         const cachedWord = {

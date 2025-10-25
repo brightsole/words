@@ -12,6 +12,7 @@ const mockStartController = jest.mocked(startController);
 const createControllerDouble = (
   overrides: Partial<ReturnType<typeof startController>>,
 ): ReturnType<typeof startController> => ({
+  countAll: jest.fn().mockRejectedValue('unexpected countAll'),
   getByName: jest.fn().mockRejectedValue('unexpected getByName'),
   invalidateCache: jest.fn().mockRejectedValue('unexpected invalidateCache'),
   remove: jest.fn().mockRejectedValue('unexpected remove'),

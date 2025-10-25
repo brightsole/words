@@ -57,6 +57,7 @@ export type Query = {
   __typename?: 'Query';
   datamuseHealthy?: Maybe<Affirmative>;
   word?: Maybe<Word>;
+  wordCount: WordCount;
 };
 
 
@@ -73,6 +74,12 @@ export type Word = {
   links: Array<Link>;
   name: Scalars['ID']['output'];
   updatedAt?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type WordCount = {
+  __typename?: 'WordCount';
+  count: Scalars['Int']['output'];
+  percentage: Scalars['Float']['output'];
 };
 
 export type WordDefinition = {
@@ -189,6 +196,8 @@ export type ResolversTypes = {
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Word: ResolverTypeWrapper<WordResolverParent>;
+  WordCount: ResolverTypeWrapper<WordCount>;
+  Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   WordDefinition: ResolverTypeWrapper<WordDefinition>;
 };
 
@@ -206,6 +215,8 @@ export type ResolversParentTypes = {
   Mutation: Record<PropertyKey, never>;
   Query: Record<PropertyKey, never>;
   Word: WordResolverParent;
+  WordCount: WordCount;
+  Int: Scalars['Int']['output'];
   WordDefinition: WordDefinition;
 };
 
@@ -239,6 +250,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   datamuseHealthy?: Resolver<Maybe<ResolversTypes['Affirmative']>, ParentType, ContextType>;
   word?: Resolver<Maybe<ResolversTypes['Word']>, ParentType, ContextType, RequireFields<QueryWordArgs, 'name'>>;
+  wordCount?: Resolver<ResolversTypes['WordCount'], ParentType, ContextType>;
 };
 
 export type WordResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Word'] = ResolversParentTypes['Word'], FederationReferenceType extends FederationReferenceTypes['Word'] = FederationReferenceTypes['Word']> = {
@@ -250,6 +262,11 @@ export type WordResolvers<ContextType = Context, ParentType extends ResolversPar
   links?: Resolver<Array<ResolversTypes['Link']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+};
+
+export type WordCountResolvers<ContextType = Context, ParentType extends ResolversParentTypes['WordCount'] = ResolversParentTypes['WordCount']> = {
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  percentage?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 };
 
 export type WordDefinitionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['WordDefinition'] = ResolversParentTypes['WordDefinition']> = {
@@ -268,6 +285,7 @@ export type Resolvers<ContextType = Context> = {
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Word?: WordResolvers<ContextType>;
+  WordCount?: WordCountResolvers<ContextType>;
   WordDefinition?: WordDefinitionResolvers<ContextType>;
 };
 
