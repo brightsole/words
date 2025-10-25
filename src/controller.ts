@@ -7,7 +7,8 @@ import env from './env';
 import fetchDefinition from './fetchDefinition';
 
 const DAY = 24 * 60 * 60 * 1000;
-const THREE_MONTHS = 90 * DAY;
+const YEAR = 365 * DAY;
+const TWO_YEARS = 2 * YEAR;
 
 const wordCache = new LRUCache<string, Word>({
   max: 100,
@@ -121,7 +122,7 @@ export const createWordController = (WordModel: ModelType) => ({
         associations,
         definition: definition,
         version: env.currentWordVersion,
-        cacheExpiryDate: Date.now() + THREE_MONTHS,
+        cacheExpiryDate: Date.now() + TWO_YEARS,
       },
       { overwrite: true }, // upsert
     );

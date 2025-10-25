@@ -66,7 +66,7 @@ const mockedFetchDefinition = fetchDefinition as jest.MockedFunction<
 >;
 
 const ASSOCIATION_KEYS = Object.keys(ASSOCIATION_TYPES);
-const THREE_MONTHS = 90 * 24 * 60 * 60 * 1000;
+const TWO_YEARS = 2 * 365 * 24 * 60 * 60 * 1000;
 const NOW = 1_694_342_400_000;
 
 const buildFetchResponse = (score: number) =>
@@ -145,7 +145,7 @@ describe('createWordController.getByName', () => {
         definition,
         faulty: expectedFaulty,
         version: expectedVersion,
-        cacheExpiryDate: NOW + THREE_MONTHS,
+        cacheExpiryDate: NOW + TWO_YEARS,
       }),
       { overwrite: true },
     );
@@ -274,7 +274,7 @@ describe('createWordController.getByName', () => {
       const encodedName = 'test%20word';
       const cachedWord: WordRecord = {
         name: encodedName,
-        cacheExpiryDate: NOW + THREE_MONTHS,
+        cacheExpiryDate: NOW + TWO_YEARS,
         faulty: false,
         version: 1,
         associations: [],
@@ -359,7 +359,7 @@ describe('createWordController.getByName', () => {
       const encodedName = 'faulty%20word';
       const faultyCachedWord: WordRecord = {
         name: encodedName,
-        cacheExpiryDate: NOW + THREE_MONTHS,
+        cacheExpiryDate: NOW + TWO_YEARS,
         faulty: true,
         version: envMock.currentWordVersion,
         associations: [],
