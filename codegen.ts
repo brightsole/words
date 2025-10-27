@@ -15,7 +15,7 @@ const config: CodegenConfig = {
           Word: '../types#WordResolverParent',
         },
         scalars: {
-          DateTime: 'number | string',
+          DateTime: 'Date',
           JSONObject: 'Record<string, unknown>',
         },
       },

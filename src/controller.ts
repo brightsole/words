@@ -5,6 +5,7 @@ import type { Word, DBWord, ModelType } from './types';
 import WordSchema from './Word.schema';
 import env from './env';
 import fetchDefinition from './fetchDefinition';
+import { normalizeWord } from './sanitize';
 
 const DAY = 24 * 60 * 60 * 1000;
 const YEAR = 365 * DAY;
@@ -43,7 +44,7 @@ export const createWordController = (WordModel: ModelType) => ({
   getByName: async (
     rawName: string,
   ): Promise<DBWord & { cacheMiss?: boolean }> => {
-    const name = encodeURIComponent(rawName.trim().toLowerCase());
+    const name = normalizeWord(rawName);
 
     // return from the LRU if possible
     const cachedWord = wordCache.get(name);
@@ -136,10 +137,12 @@ export const createWordController = (WordModel: ModelType) => ({
     return { ...newWord, cacheMiss: true };
   },
 
-  invalidateCache: async (name: string, userId?: string) => {
+  invalidateCache: async (rawName: string, userId?: string) => {
     if (userId !== env.adminUserId || !env.adminUserId) {
       throw new Error('Only admin can force cache invalidation');
     }
+
+    const name = normalizeWord(rawName);
 
     await WordModel.update(
       { name },
@@ -150,10 +153,12 @@ export const createWordController = (WordModel: ModelType) => ({
     return { ok: true };
   },
 
-  remove: async (name: string, userId?: string) => {
+  remove: async (rawName: string, userId?: string) => {
     if (userId !== env.adminUserId || !env.adminUserId) {
       throw new Error('Only admin can force cache invalidation');
     }
+
+    const name = normalizeWord(rawName);
 
     await WordModel.delete(name);
     wordCache.delete(name);

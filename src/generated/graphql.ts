@@ -15,7 +15,7 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
-  DateTime: { input: number | string; output: number | string; }
+  DateTime: { input: Date; output: Date; }
   JSONObject: { input: Record<string, unknown>; output: Record<string, unknown>; }
   _FieldSet: { input: any; output: any; }
 };
