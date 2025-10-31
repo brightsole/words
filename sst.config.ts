@@ -42,6 +42,7 @@ export default $config({
         format: 'esm',
       },
       environment: {
+        ADMIN_USER_ID: process.env.ADMIN_USER_ID || '',
         TABLE_NAME: wordsTable.name,
         CURRENT_WORD_VERSION: '1',
       },
@@ -76,7 +77,8 @@ export default $config({
     // });
 
     return {
-      apiUrl: api.url,
+      graphUrl: `${api.url}/graphql`,
+      restUrl: `${api.url}/words`,
       wordsTable: wordsTable.name,
     };
   },

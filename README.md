@@ -4,6 +4,10 @@
 [![Dependabot Updates](https://github.com/brightsole/words/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/brightsole/words/actions/workflows/dependabot/dependabot-updates)
 [![Deploy to Production](https://github.com/brightsole/words/actions/workflows/deploy.yml/badge.svg)](https://github.com/brightsole/words/actions/workflows/deploy.yml)
 
+[development](https://pg7s9i3ui7.execute-api.ap-southeast-2.amazonaws.com/graphql)
+
+[production](https://9odq4mjsql.execute-api.ap-southeast-2.amazonaws.com/graphql)
+
 Our links storage is a naïve solution. we store one word record with a zillion links
 
 a smarter solution _(but ultimately more costly)_ would be to store the links as records, and have the lookup be a StartWith query
