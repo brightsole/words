@@ -77,8 +77,8 @@ export default $config({
     // });
 
     return {
-      graphUrl: `${api.url}/graphql`,
-      restUrl: `${api.url}/words`,
+      graphUrl: api.url.apply((url) => `${url}/graphql`),
+      restUrl: api.url.apply((url) => `${url}/words`),
       wordsTable: wordsTable.name,
     };
   },
