@@ -17,7 +17,7 @@
     "start": "sst dev --stage preview",
     "lint": "eslint --fix .",
     "test": "tsc --noEmit && jest",
-    "graphql:codegen": "graphql-codegen --config codegen.ts"
+    "codegen": "graphql-codegen --config codegen.ts"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
