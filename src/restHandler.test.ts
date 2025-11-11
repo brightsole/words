@@ -2,6 +2,7 @@ import http from 'node:http';
 import { nanoid } from 'nanoid';
 import { startController } from './controller';
 import { createRestApp } from './restHandler';
+import env from './env';
 
 jest.mock('./controller', () => ({
   startController: jest.fn(),
@@ -60,6 +61,9 @@ describe('REST handler', () => {
               port: serverAddress.port,
               path: '/words/threeve',
               method: 'GET',
+              headers: {
+                [env.authHeaderName]: env.authHeaderValue,
+              },
             },
             (res) => {
               const chunks: Buffer[] = [];

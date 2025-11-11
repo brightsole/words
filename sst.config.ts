@@ -18,6 +18,10 @@ export default $config({
       deletionProtection: $app.stage === 'production',
     });
 
+    const internalAuth = await aws.secretsmanager.getSecretVersionOutput({
+      secretId: `jumpingbeen/${$app.stage}/internal-lockdown`,
+    });
+
     const api = new sst.aws.ApiGatewayV2('WordsAPI', {
       link: [wordsTable],
     });
@@ -34,19 +38,27 @@ export default $config({
     //   },
     // });
 
+    const authSecrets = internalAuth.secretString.apply((s) => JSON.parse(s!));
+
     const functionConfig = {
-      runtime: 'nodejs22.x',
-      timeout: '20 seconds',
-      memory: '1024 MB',
+      runtime: 'nodejs22.x' as const,
+      timeout: '20 seconds' as const,
+      memory: '1024 MB' as const,
       nodejs: {
-        format: 'esm',
+        format: 'esm' as const,
       },
       environment: {
         ADMIN_USER_ID: process.env.ADMIN_USER_ID || '',
         TABLE_NAME: wordsTable.name,
         CURRENT_WORD_VERSION: '1',
+        INTERNAL_SECRET_HEADER_NAME: authSecrets.apply(
+          (v) => v.INTERNAL_SECRET_HEADER_NAME,
+        ),
+        INTERNAL_SECRET_HEADER_VALUE: authSecrets.apply(
+          (v) => v.INTERNAL_SECRET_HEADER_VALUE,
+        ),
       },
-    } as const;
+    };
 
     api.route('ANY /graphql', {
       ...functionConfig,
@@ -70,11 +82,6 @@ export default $config({
       value: api.url,
       description: `API Gateway URL for ${$app.name} ${$app.stage}`,
     });
-
-    // roughly how to get the api url in fed gateway
-    // const wordsApiUrl = await aws.ssm.getParameter({
-    //   name: `/sst/words-service/${$app.stage}/api-url`,
-    // });
 
     return {
       graphUrl: api.url.apply((url) => `${url}/graphql`),
